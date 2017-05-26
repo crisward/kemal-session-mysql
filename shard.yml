@@ -1,0 +1,14 @@
+name: kemal-session-mysql
+version: 0.1.0
+
+authors:
+  - Cris Ward <cris@duodesign.co.uk>
+
+dependencies:
+  kemal-session:
+    github: kemalcr/kemal-session
+    branch: master
+
+crystal: 0.22.0
+
+license: MIT
