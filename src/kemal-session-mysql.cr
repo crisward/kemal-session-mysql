@@ -2,48 +2,54 @@ require "json"
 require "kemal-session"
 
 class Session
-  class MysqlEngine < Engine
+  class MysqlEngine < Kemal::Session::Engine
     class StorageInstance
-      macro define_storage(vars)
-        JSON.mapping({
-          {% for name, type in vars %}
-            {{name.id}}s: Hash(String, {{type}}),
-          {% end %}
-        })
+        macro define_storage(vars)
+          JSON.mapping({
+            {% for name, type in vars %}
+              {{name.id}}s: Hash(String, {{type}}),
+            {% end %}
+          })
 
-        {% for name, type in vars %}
-          @{{name.id}}s = Hash(String, {{type}}).new
-          getter {{name.id}}s
-
-          def {{name.id}}(k : String) : {{type}}
-            return @{{name.id}}s[k]
-          end
-
-          def {{name.id}}?(k : String) : {{type}}?
-            return @{{name.id}}s[k]?
-          end
-
-          def {{name.id}}(k : String, v : {{type}})
-            @{{name.id}}s[k] = v
-          end
-        {% end %}
-
-        def initialize
           {% for name, type in vars %}
             @{{name.id}}s = Hash(String, {{type}}).new
-          {% end %}
-        end
-      end
+            getter {{name.id}}s
 
-      define_storage({
-        int: Int32,
-        bigint: Int64,
-        string:  String,
-        float:   Float64,
-        bool: Bool,
-        object: Session::StorableObject::StorableObjectContainer,
-      })
-    end
+            def {{name.id}}(k : String) : {{type}}
+              return @{{name.id}}s[k]
+            end
+
+            def {{name.id}}?(k : String) : {{type}}?
+              return @{{name.id}}s[k]?
+            end
+
+            def {{name.id}}(k : String, v : {{type}})
+              @{{name.id}}s[k] = v
+            end
+
+            def delete_{{name.id}}(k : String)
+              if @{{name.id}}s[k]?
+                @{{name.id}}s.delete(k)
+              end
+            end
+          {% end %}
+
+          def initialize
+            {% for name, type in vars %}
+              @{{name.id}}s = Hash(String, {{type}}).new
+            {% end %}
+          end
+        end
+
+        define_storage({
+          int: Int32,
+          bigint: Int64,
+          string:  String,
+          float:   Float64,
+          bool: Bool,
+          object: Kemal::Session::StorableObject::StorableObjectContainer,
+        })
+      end
 
     def initialize(@connection : DB::Database, @sessiontable : String = "sessions")
       # check if table exists, if not create it
@@ -62,9 +68,9 @@ class Session
 
     def run_gc
       # delete old sessions here
-      expiretime = Time.now - Session.config.timeout.total_seconds
-      sql = "delete from ? where updated_at < ?"
-      @connection.exec(sql, @sessiontable, expiretime)
+      #expiretime = Time.now - Kemal::Session.config.timeout.total_seconds
+      #sql = "delete from ? where updated_at < ?"
+      #@connection.exec(sql, @sessiontable, expiretime)
     end
 
     def all_sessions : Array(Session)
