@@ -12,6 +12,7 @@ Add this to your application's `shard.yml`:
 dependencies:
   kemal-session-mysql:
     github: crystal-lang/crystal-mysql
+  mysql:
     github: crisward/kemal-session-mysql
 ```
 
@@ -19,7 +20,6 @@ dependencies:
 
 ```crystal
 require "kemal"
-require "kemal-session"
 require "kemal-session-mysql"
 require "mysql"
 

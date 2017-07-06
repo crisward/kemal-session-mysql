@@ -1,9 +1,14 @@
 require "./spec_helper"
+require "kemal"
 
-describe Session::MysqlEngine do
+describe Kemal::Session::MysqlEngine do
   # TODO: Write tests
 
   it "works" do
-    true.should eq(true)
+
+
+    # connect to mysql, update url with your connection info (or perhaps use an ENV var)
+    
+
   end
 end

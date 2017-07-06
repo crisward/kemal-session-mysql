@@ -1,7 +1,7 @@
 require "json"
 require "kemal-session"
 
-class Session
+class Kemal::Session
   class MysqlEngine < Kemal::Session::Engine
     class StorageInstance
         macro define_storage(vars)
