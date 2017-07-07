@@ -8,7 +8,7 @@ SESSION_ID = SecureRandom.hex
 
 Spec.before_each do
   Kemal::Session.config.secret = "super-awesome-secret"
-  Kemal::Session.config.engine = MysqlEngine.new(Db)
+  Kemal::Session.config.engine = Kemal::Session::MysqlEngine.new(Db)
 end
 
 Spec.after_each do
