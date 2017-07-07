@@ -2,50 +2,49 @@ require "spec"
 require "mysql"
 require "../src/kemal-session-mysql"
 
-module Kemal
-  connection = DB.open "mysql://root@localhost/test?max_pool_size=50&initial_pool_size=10&max_idle_pool_size=10&retry_attempts=3"
-  Session.config.secret = "super-awesome-secret"
-  Session.config.engine = Session::MysqlEngine.new(connection)
 
-  # REDIS      = Redis.new
-  SESSION_ID = SecureRandom.hex
+Db = DB.open "mysql://root@localhost/session_test?max_pool_size=50&initial_pool_size=10&max_idle_pool_size=10&retry_attempts=3"
+SESSION_ID = SecureRandom.hex
 
-  Spec.before_each do
-    # REDIS.flushall
+Spec.before_each do
+  Kemal::Session.config.secret = "super-awesome-secret"
+  Kemal::Session.config.engine = MysqlEngine.new(Db)
+end
+
+Spec.after_each do
+  Db.exec("DROP TABLE IF EXISTS sessions")
+end
+
+def create_context(session_id : String)
+  response = HTTP::Server::Response.new(IO::Memory.new)
+  headers = HTTP::Headers.new
+
+  unless session_id == ""
+    Kemal::Session.config.engine.create_session(session_id)
+    cookies = HTTP::Cookies.new
+    cookies << HTTP::Cookie.new(Kemal::Session.config.cookie_name, Kemal::Session.encode(session_id))
+    cookies.add_request_headers(headers)
   end
 
-  def create_context(session_id : String)
-    response = HTTP::Server::Response.new(IO::Memory.new)
-    headers = HTTP::Headers.new
+  request = HTTP::Request.new("GET", "/", headers)
+  return HTTP::Server::Context.new(request, response)
+end
 
-    # I would rather pass nil if no cookie should be created
-    # but that throws an error
-    unless session_id == ""
-      Session.config.engine.create_session(session_id)
-      cookies = HTTP::Cookies.new
-      cookies << HTTP::Cookie.new(Session.config.cookie_name, Session.encode(session_id))
-      cookies.add_request_headers(headers)
-    end
+class UserJsonSerializer
+  JSON.mapping({
+    id:   Int32,
+    name: String,
+  })
+  include Kemal::Session::StorableObject
 
-    request = HTTP::Request.new("GET", "/", headers)
-    return HTTP::Server::Context.new(request, response)
+  def initialize(@id : Int32, @name : String); end
+
+  def serialize
+    self.to_json
   end
 
-  class UserJsonSerializer
-    JSON.mapping({
-      id:   Int32,
-      name: String,
-    })
-    include Session::StorableObject
-
-    def initialize(@id : Int32, @name : String); end
-
-    def serialize
-      self.to_json
-    end
-
-    def self.unserialize(value : String)
-      UserJsonSerializer.from_json(value)
-    end
+  def self.unserialize(value : String)
+    UserJsonSerializer.from_json(value)
   end
 end
+
