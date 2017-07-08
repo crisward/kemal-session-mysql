@@ -74,9 +74,10 @@ module Kemal
 
       def run_gc
         # delete old sessions here
-        # expiretime = Time.now - Kemal::Session.config.timeout.total_seconds
-        # sql = "delete from ? where updated_at < ?"
-        # @connection.exec(sql, @sessiontable, expiretime)
+        expiretime = Time.now - Kemal::Session.config.timeout
+        sql = "delete from #{@sessiontable} where updated_at < ?"
+        p sql,expiretime
+        #@connection.exec(sql, expiretime)
       end
 
       def all_sessions : Array(StorageInstance)
@@ -92,6 +93,7 @@ module Kemal
         session = StorageInstance.new
         data = session.to_json
         sql = "insert into #{@sessiontable} (session_id,data,updated_at) values(?,?,NOW())"
+        p sql,data, session_id
         @connection.exec(sql, session_id, data)
         return session
       end
@@ -99,7 +101,12 @@ module Kemal
       def save_cache()
         data = @cache.to_json
         sql = "update #{@sessiontable} set data=?,updated_at=NOW() where session_id = ? "
-        @connection.exec(sql, data, @cached_session_id)
+        p sql,data, @cached_session_id
+        res = @connection.exec(sql, data, @cached_session_id)
+        p "save_cache",res
+        if res.last_insert_id == 0
+          create_session(@cached_session_id)
+        end
       end
 
       def each_session
@@ -145,7 +152,7 @@ module Kemal
       end
 
       def is_in_cache?(session_id : String) : Bool
-        if (@cached_session_read_time.epoch / 60) < (Time.utc_now.epoch / 60)
+        if (@cached_session_read_time.epoch / 5) < (Time.utc_now.epoch / 5)
           @cached_session_read_time = Time.utc_now
         end
         return session_id == @cached_session_id
