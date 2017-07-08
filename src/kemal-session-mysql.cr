@@ -138,7 +138,7 @@ module Kemal
       def load_into_cache(session_id : String) : StorageInstance
         @cached_session_id = session_id
         begin
-          json = Db.query_one? "select data from sessions where session_id = ?", session_id, &.read(String)
+          json = @connection.query_one "select data from sessions where session_id = ?", session_id, &.read(String)
           @cache = StorageInstance.from_json(json.to_s)
           @cached_session_read_time = Time.utc_now
         rescue ex 
