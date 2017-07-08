@@ -1,16 +1,7 @@
 require "./spec_helper"
 
 describe "Kemal::Session::MysqlEngine" do
-  # TODO: Write tests
-
-  it "should setup the seesion table" do
-
-
-    
-    # connect to mysql, update url with your connection info (or perhaps use an ENV var)
-  
-  end
-
+  # TODO: confirm the table name is used...
   describe ".int" do
     it "can save a value" do
       session = Kemal::Session.new(create_context(SESSION_ID))
@@ -20,8 +11,10 @@ describe "Kemal::Session::MysqlEngine" do
     it "can retrieve a saved value" do
       session = Kemal::Session.new(create_context(SESSION_ID))
       session.int("int", 12)
+      get_from_db(SESSION_ID).should eq(%{{"ints":{"int":12},"bigints":{},"strings":{},"floats":{},"bools":{},"objects":{}}})
       session.int("int").should eq 12
     end
+
   end
 
   describe ".bool" do
@@ -119,7 +112,7 @@ describe "Kemal::Session::MysqlEngine" do
       get_session = Kemal::Session.get(SESSION_ID)
       get_session.should_not be_nil
       if get_session
-        #session.id.should eq(get_session.id)
+        session.id.should eq(get_session.id)
         get_session.is_a?(Kemal::Session).should be_true
       end
     end

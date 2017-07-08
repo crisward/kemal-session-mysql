@@ -15,6 +15,10 @@ Spec.after_each do
   Db.exec("DROP TABLE IF EXISTS sessions")
 end
 
+def get_from_db(session_id : String)
+  Db.query_one "select data from sessions where session_id = ?", session_id, &.read(String)
+end
+
 def create_context(session_id : String)
   response = HTTP::Server::Response.new(IO::Memory.new)
   headers = HTTP::Headers.new

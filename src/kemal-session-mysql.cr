@@ -56,7 +56,7 @@ module Kemal
       @cached_session_id : String
       @cached_session_read_time : Time
 
-      def initialize(@connection : DB::Database, @sessiontable : String = "sessions")
+      def initialize(@connection : DB::Database, @sessiontable : String = "sessions", @cachetime : Int32 = 5)
         # check if table exists, if not create it
         sql = "CREATE TABLE IF NOT EXISTS #{@sessiontable} (
             `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -77,7 +77,7 @@ module Kemal
         expiretime = Time.now - Kemal::Session.config.timeout
         sql = "delete from #{@sessiontable} where updated_at < ?"
         p sql,expiretime
-        #@connection.exec(sql, expiretime)
+        @connection.exec(sql, expiretime)
       end
 
       def all_sessions : Array(StorageInstance)
@@ -92,21 +92,16 @@ module Kemal
       def create_session(session_id : String)
         session = StorageInstance.new
         data = session.to_json
-        sql = "insert into #{@sessiontable} (session_id,data,updated_at) values(?,?,NOW())"
-        p sql,data, session_id
+        sql = "REPLACE into #{@sessiontable} (session_id,data,updated_at) values(?,?,NOW())"
         @connection.exec(sql, session_id, data)
+        @cached_session_read_time = Time.utc_now
         return session
       end
 
       def save_cache()
         data = @cache.to_json
         sql = "update #{@sessiontable} set data=?,updated_at=NOW() where session_id = ? "
-        p sql,data, @cached_session_id
         res = @connection.exec(sql, data, @cached_session_id)
-        p "save_cache",res
-        if res.last_insert_id == 0
-          create_session(@cached_session_id)
-        end
       end
 
       def each_session
@@ -146,16 +141,19 @@ module Kemal
         begin
           json = @connection.scalar(sql, session_id)
           @cache = StorageInstance.from_json(json.to_s)
-        rescue
+          @cached_session_read_time = Time.utc_now
+        rescue ex 
+          p ex.message
           @cache = StorageInstance.new
         end
+        return @cache
       end
 
       def is_in_cache?(session_id : String) : Bool
-        if (@cached_session_read_time.epoch / 5) < (Time.utc_now.epoch / 5)
-          @cached_session_read_time = Time.utc_now
-        end
-        return session_id == @cached_session_id
+        # only read from db once ever 'n' seconds. This should help with a single webpage hitting the db for every asset
+        not_too_old = (Time.utc_now.epoch - @cachetime) <= @cached_session_read_time.epoch
+        exists = session_id == @cached_session_id
+        return exists && not_too_old
       end
 
       macro define_delegators(vars)
