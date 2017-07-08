@@ -143,8 +143,8 @@ module Kemal
           @cache = StorageInstance.from_json(json.to_s)
           @cached_session_read_time = Time.utc_now
         rescue ex 
-          p ex.message
-          @cache = StorageInstance.new
+          #recreates session based on id, if it has been deleted?
+          create_session(@cached_session_id)
         end
         return @cache
       end
