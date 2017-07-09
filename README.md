@@ -1,6 +1,6 @@
 # kemal-session-mysql
 
-This is a mysql adaptor for [Kemal Session] (https://github.com/kemalcr/kemal-session)
+This is a mysql adaptor for [Kemal Session](https://github.com/kemalcr/kemal-session)
 
 ## Installation
 
