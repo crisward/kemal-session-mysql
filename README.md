@@ -1,5 +1,7 @@
 # kemal-session-mysql
 
+[![Build Status](https://travis-ci.org/crisward/kemal-session-mysql.svg?branch=master)](https://travis-ci.org/crisward/kemal-session-mysql)
+
 This is a mysql adaptor for [Kemal Session](https://github.com/kemalcr/kemal-session)
 
 ## Installation
