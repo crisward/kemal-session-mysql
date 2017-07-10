@@ -1,1 +1,5 @@
 language: crystal
+services: 
+  - mysql
+before_install:
+  - mysql -e 'CREATE DATABASE session_test;'
