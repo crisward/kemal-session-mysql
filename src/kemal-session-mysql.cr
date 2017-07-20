@@ -117,7 +117,7 @@ module Kemal
       end
 
       def session_exists?(session_id : String) : Bool
-        sql = "select data from #{@sessiontable} where session_id = ?"
+        sql = "select id from #{@sessiontable} where session_id = ?"
         begin
           @connection.scalar(sql, session_id)
           return true 
@@ -138,13 +138,14 @@ module Kemal
       def load_into_cache(session_id : String) : StorageInstance
         @cached_session_id = session_id
         begin
-          json = @connection.query_one "select data from sessions where session_id = ?", session_id, &.read(String)
+          json = @connection.query_one "select data from #{@sessiontable} where session_id = ?", session_id, &.read(String)
           @cache = StorageInstance.from_json(json.to_s)
           @cached_session_read_time = Time.utc_now
         rescue ex 
           #recreates session based on id, if it has been deleted?
           create_session(@cached_session_id)
         end
+        @connection.exec("update #{@sessiontable} set updated_at = NOW() where session_id = ?",session_id)
         return @cache
       end
 
