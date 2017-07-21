@@ -76,7 +76,6 @@ module Kemal
         # delete old sessions here
         expiretime = Time.now - Kemal::Session.config.timeout
         sql = "delete from #{@sessiontable} where updated_at < ?"
-        p sql,expiretime
         @connection.exec(sql, expiretime)
       end
 
