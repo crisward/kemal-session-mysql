@@ -137,9 +137,9 @@ module Kemal
       def load_into_cache(session_id : String) : StorageInstance
         @cached_session_id = session_id
         begin
+          @cached_session_read_time = Time.utc_now
           json = @connection.query_one "select data from #{@sessiontable} where session_id = ?", session_id, &.read(String)
           @cache = StorageInstance.from_json(json.to_s)
-          @cached_session_read_time = Time.utc_now
         rescue ex 
           #recreates session based on id, if it has been deleted?
           create_session(@cached_session_id)
