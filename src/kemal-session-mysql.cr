@@ -52,9 +52,8 @@ module Kemal
         })
       end
       
-      @cache : StorageInstance
-      @cached_session_id : String
-      @cached_session_read_time : Time
+      @cache : Hash(String,StorageInstance)
+      @cached_session_read_times : Hash(String,Time) 
 
       def initialize(@connection : DB::Database, @sessiontable : String = "sessions", @cachetime : Int32 = 5)
         # check if table exists, if not create it
@@ -67,9 +66,8 @@ module Kemal
             UNIQUE KEY `session_session_id` (`session_id`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8; "
         @connection.exec(sql, @sessiontable)
-        @cache = StorageInstance.new
-        @cached_session_id = ""
-        @cached_session_read_time = Time.utc_now
+        @cache = {} of String => StorageInstance
+        @cached_session_read_times = {} of String => Time
       end
 
       def run_gc
@@ -77,6 +75,13 @@ module Kemal
         expiretime = Time.now - Kemal::Session.config.timeout
         sql = "delete from #{@sessiontable} where updated_at < ?"
         @connection.exec(sql, expiretime)
+        # delete old memory cache too, if it exists and is too old
+        @cache.each do |session_id,session|
+          if @cached_session_read_times[session_id]? && (Time.utc_now.epoch - @cachetime) > @cached_session_read_times[session_id].epoch
+            @cache.delete(session_id)
+            @cached_session_read_times.delete(session_id)
+          end
+        end
       end
 
       def all_sessions : Array(StorageInstance)
@@ -93,14 +98,13 @@ module Kemal
         data = session.to_json
         sql = "REPLACE into #{@sessiontable} (session_id,data,updated_at) values(?,?,NOW())"
         @connection.exec(sql, session_id, data)
-        @cached_session_read_time = Time.utc_now
         return session
       end
 
-      def save_cache()
-        data = @cache.to_json
+      def save_cache(session_id)
+        data = @cache[session_id].to_json
         sql = "update #{@sessiontable} set data=?,updated_at=NOW() where session_id = ? "
-        res = @connection.exec(sql, data, @cached_session_id)
+        res = @connection.exec(sql, data, session_id)
       end
 
       def each_session
@@ -135,47 +139,46 @@ module Kemal
       end
 
       def load_into_cache(session_id : String) : StorageInstance
-        @cached_session_id = session_id
         begin
-          @cached_session_read_time = Time.utc_now
           json = @connection.query_one "select data from #{@sessiontable} where session_id = ?", session_id, &.read(String)
-          @cache = StorageInstance.from_json(json.to_s)
+          @cache[session_id] = StorageInstance.from_json(json.to_s)
         rescue ex 
           #recreates session based on id, if it has been deleted?
-          create_session(@cached_session_id)
+          @cache[session_id] = create_session(session_id)
         end
+        @cached_session_read_times[session_id] = Time.utc_now
         @connection.exec("update #{@sessiontable} set updated_at = NOW() where session_id = ?",session_id)
-        return @cache
+        @cache[session_id]
       end
 
       def is_in_cache?(session_id : String) : Bool
         # only read from db once ever 'n' seconds. This should help with a single webpage hitting the db for every asset
-        not_too_old = (Time.utc_now.epoch - @cachetime) <= @cached_session_read_time.epoch
-        exists = session_id == @cached_session_id
-        return exists && not_too_old
+        return false if !@cached_session_read_times[session_id]? #if not in cache reload it
+        not_too_old = (Time.utc_now.epoch - @cachetime) <= @cached_session_read_times[session_id].epoch
+        return not_too_old # if it is too old, load_into_cache will get called and it'll be reloaded
       end
 
       macro define_delegators(vars)
           {% for name, type in vars %}
             def {{name.id}}(session_id : String, k : String) : {{type}}
               load_into_cache(session_id) unless is_in_cache?(session_id)
-              return @cache.{{name.id}}(k)
+              return @cache[session_id].{{name.id}}(k)
             end
 
             def {{name.id}}?(session_id : String, k : String) : {{type}}?
               load_into_cache(session_id) unless is_in_cache?(session_id)
-              return @cache.{{name.id}}?(k)
+              return @cache[session_id].{{name.id}}?(k)
             end
 
             def {{name.id}}(session_id : String, k : String, v : {{type}})
               load_into_cache(session_id) unless is_in_cache?(session_id)
-              @cache.{{name.id}}(k, v)
-              save_cache
+              @cache[session_id].{{name.id}}(k, v)
+              save_cache(session_id)
             end
 
             def {{name.id}}s(session_id : String) : Hash(String, {{type}})
               load_into_cache(session_id) unless is_in_cache?(session_id)
-              return @cache.{{name.id}}s
+              return @cache[session_id].{{name.id}}s
             end
           {% end %}
         end
