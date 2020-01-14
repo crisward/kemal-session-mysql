@@ -2,9 +2,8 @@ require "spec"
 require "mysql"
 require "../src/kemal-session-mysql"
 
-
-Db = DB.open "mysql://root@localhost/session_test?max_pool_size=50&initial_pool_size=10&max_idle_pool_size=10&retry_attempts=3"
-SESSION_ID = SecureRandom.hex
+Db         = DB.open "mysql://root@localhost/session_test?max_pool_size=50&initial_pool_size=10&max_idle_pool_size=10&retry_attempts=3"
+SESSION_ID = Random::Secure.hex
 
 Spec.before_each do
   Kemal::Session.config.secret = "super-awesome-secret"
@@ -51,4 +50,3 @@ class UserJsonSerializer
     UserJsonSerializer.from_json(value)
   end
 end
-

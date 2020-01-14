@@ -14,7 +14,6 @@ describe "Kemal::Session::MysqlEngine" do
       get_from_db(SESSION_ID).should eq(%{{"ints":{"int":12},"bigints":{},"strings":{},"floats":{},"bools":{},"objects":{}}})
       session.int("int").should eq 12
     end
-
   end
 
   describe ".bool" do
@@ -30,7 +29,7 @@ describe "Kemal::Session::MysqlEngine" do
     end
   end
 
- describe ".float" do
+  describe ".float" do
     it "can save a value" do
       session = Kemal::Session.new(create_context(SESSION_ID))
       session.float("float", 3.00)
@@ -70,10 +69,10 @@ describe "Kemal::Session::MysqlEngine" do
   describe ".destroy" do
     it "should remove session from mysql" do
       session = Kemal::Session.new(create_context(SESSION_ID))
-      value = Db.scalar("select count(id) from sessions where session_id = ?",SESSION_ID)
+      value = Db.scalar("select count(session_id) from sessions where session_id = ?", SESSION_ID)
       value.should eq(1)
       session.destroy
-      value = Db.scalar("select count(id) from sessions where session_id = ?",SESSION_ID)
+      value = Db.scalar("select count(session_id) from sessions where session_id = ?", SESSION_ID)
       value.should eq(0)
     end
   end
@@ -81,16 +80,16 @@ describe "Kemal::Session::MysqlEngine" do
   describe "#destroy" do
     it "should remove session from mysql" do
       session = Kemal::Session.new(create_context(SESSION_ID))
-      value = Db.scalar("select count(id) from sessions where session_id = ?",SESSION_ID)
+      value = Db.scalar("select count(session_id) from sessions where session_id = ?", SESSION_ID)
       value.should eq(1)
       Kemal::Session.destroy(SESSION_ID)
-      value = Db.scalar("select count(id) from sessions where session_id = ?",SESSION_ID)
+      value = Db.scalar("select count(session_id) from sessions where session_id = ?", SESSION_ID)
       value.should eq(0)
     end
 
     it "should succeed if session doesnt exist in mysql" do
       session = Kemal::Session.new(create_context(SESSION_ID))
-      value = Db.scalar("select count(id) from sessions where session_id = ?",SESSION_ID)
+      value = Db.scalar("select count(session_id) from sessions where session_id = ?", SESSION_ID)
       value.should eq(1)
       Kemal::Session.destroy(SESSION_ID).should be_truthy
     end
@@ -98,7 +97,7 @@ describe "Kemal::Session::MysqlEngine" do
 
   describe "#destroy_all" do
     it "should remove all sessions in mysql" do
-      5.times { Kemal::Session.new(create_context(SecureRandom.hex)) }
+      5.times { Kemal::Session.new(create_context(Random::Secure.hex)) }
       arr = Kemal::Session.all
       arr.size.should eq(5)
       Kemal::Session.destroy_all
@@ -126,7 +125,7 @@ describe "Kemal::Session::MysqlEngine" do
   describe "#create" do
     it "should build an empty session" do
       Kemal::Session.config.engine.create_session(SESSION_ID)
-      value = Db.scalar("select count(id) from sessions where session_id = ?",SESSION_ID)
+      value = Db.scalar("select count(session_id) from sessions where session_id = ?", SESSION_ID)
       value.should eq(1)
     end
   end
@@ -139,7 +138,7 @@ describe "Kemal::Session::MysqlEngine" do
     end
 
     it "should return an array of Sessions" do
-      3.times { Kemal::Session.new(create_context(SecureRandom.hex)) }
+      3.times { Kemal::Session.new(create_context(Random::Secure.hex)) }
       arr = Kemal::Session.all
       arr.is_a?(Array).should be_true
       arr.size.should eq(3)
@@ -148,7 +147,7 @@ describe "Kemal::Session::MysqlEngine" do
 
   describe "#each" do
     it "should iterate over all sessions" do
-      5.times { Kemal::Session.new(create_context(SecureRandom.hex)) }
+      5.times { Kemal::Session.new(create_context(Random::Secure.hex)) }
       count = 0
       Kemal::Session.each do |session|
         count = count + 1
@@ -156,7 +155,4 @@ describe "Kemal::Session::MysqlEngine" do
       count.should eq(5)
     end
   end
-
 end
-
-
