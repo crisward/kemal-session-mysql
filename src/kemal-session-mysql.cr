@@ -58,11 +58,10 @@ module Kemal
       def initialize(@connection : DB::Database, @sessiontable : String = "sessions", @cachetime : Int32 = 5)
         # check if table exists, if not create it
         sql = "CREATE TABLE IF NOT EXISTS #{@sessiontable} (
-            `session_id` char(36) DEFAULT NULL,
+            `session_id` char(36) NOT NULL,
             `data` text,
             `updated_at` datetime DEFAULT NULL,
-            PRIMARY KEY (`session_id`),
-            UNIQUE KEY `session_session_id` (`session_id`)
+            PRIMARY KEY (`session_id`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8; "
         @connection.exec(sql, @sessiontable)
         @cache = {} of String => StorageInstance
