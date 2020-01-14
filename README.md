@@ -11,8 +11,6 @@ Add this to your application's `shard.yml`:
 ```yaml
 dependencies:
   kemal-session-mysql:
-    github: crystal-lang/crystal-mysql
-  mysql:
     github: crisward/kemal-session-mysql
 ```
 
