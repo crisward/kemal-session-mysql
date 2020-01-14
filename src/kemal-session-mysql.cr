@@ -43,26 +43,25 @@ module Kemal
             end
 
         define_storage({
-          int: Int32,
+          int:    Int32,
           bigint: Int64,
-          string:  String,
-          float:   Float64,
-          bool: Bool,
+          string: String,
+          float:  Float64,
+          bool:   Bool,
           object: Session::StorableObject::StorableObjectContainer,
         })
       end
-      
-      @cache : Hash(String,StorageInstance)
-      @cached_session_read_times : Hash(String,Time) 
+
+      @cache : Hash(String, StorageInstance)
+      @cached_session_read_times : Hash(String, Time)
 
       def initialize(@connection : DB::Database, @sessiontable : String = "sessions", @cachetime : Int32 = 5)
         # check if table exists, if not create it
         sql = "CREATE TABLE IF NOT EXISTS #{@sessiontable} (
-            `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-            `session_id` varchar(32) DEFAULT NULL,
+            `session_id` char(32) DEFAULT NULL,
             `data` text,
             `updated_at` datetime DEFAULT NULL,
-            PRIMARY KEY (`id`),
+            PRIMARY KEY (`session_id`),
             UNIQUE KEY `session_session_id` (`session_id`)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8; "
         @connection.exec(sql, @sessiontable)
@@ -76,8 +75,8 @@ module Kemal
         sql = "delete from #{@sessiontable} where updated_at < ?"
         @connection.exec(sql, expiretime)
         # delete old memory cache too, if it exists and is too old
-        @cache.each do |session_id,session|
-          if @cached_session_read_times[session_id]? && (Time.utc_now.epoch - @cachetime) > @cached_session_read_times[session_id].epoch
+        @cache.each do |session_id, session|
+          if @cached_session_read_times[session_id]? && (Time.utc.to_unix - @cachetime) > @cached_session_read_times[session_id].to_unix
             @cache.delete(session_id)
             @cached_session_read_times.delete(session_id)
           end
@@ -123,8 +122,8 @@ module Kemal
         sql = "select id from #{@sessiontable} where session_id = ?"
         begin
           @connection.scalar(sql, session_id)
-          return true 
-        rescue 
+          return true
+        rescue
           return false
         end
       end
@@ -142,19 +141,19 @@ module Kemal
         begin
           json = @connection.query_one "select data from #{@sessiontable} where session_id = ?", session_id, &.read(String)
           @cache[session_id] = StorageInstance.from_json(json.to_s)
-        rescue ex 
-          #recreates session based on id, if it has been deleted?
+        rescue ex
+          # recreates session based on id, if it has been deleted?
           @cache[session_id] = create_session(session_id)
         end
         @cached_session_read_times[session_id] = Time.utc_now
-        @connection.exec("update #{@sessiontable} set updated_at = NOW() where session_id = ?",session_id)
+        @connection.exec("update #{@sessiontable} set updated_at = NOW() where session_id = ?", session_id)
         @cache[session_id]
       end
 
       def is_in_cache?(session_id : String) : Bool
         # only read from db once ever 'n' seconds. This should help with a single webpage hitting the db for every asset
-        return false if !@cached_session_read_times[session_id]? #if not in cache reload it
-        not_too_old = (Time.utc_now.epoch - @cachetime) <= @cached_session_read_times[session_id].epoch
+        return false if !@cached_session_read_times[session_id]? # if not in cache reload it
+        not_too_old = (Time.utc_now.to_unix - @cachetime) <= @cached_session_read_times[session_id].to_unix
         return not_too_old # if it is too old, load_into_cache will get called and it'll be reloaded
       end
 
@@ -184,11 +183,11 @@ module Kemal
         end
 
       define_delegators({
-        int: Int32,
+        int:    Int32,
         bigint: Int64,
-        string:  String,
-        float:   Float64,
-        bool: Bool,
+        string: String,
+        float:  Float64,
+        bool:   Bool,
         object: Session::StorableObject::StorableObjectContainer,
       })
     end
